@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Liman</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background-color: #87CEEB; /* Gökyüzü rengi */
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            background-color: #B0E0E6; 
+            border: 4px solid #333; 
+            border-radius: 10px;
+            box-shadow: 0px 0px 15px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let frames = 0;
+        let score = 0;
+        let gameState = 'start'; // start, play, over
+
+        // Konteyner Gemisi (Kuş yerine)
+        const ship = { 
+            x: 50, 
+            y: 150, 
+            w: 45, 
+            h: 20, 
+            velocity: 0, 
+            gravity: 0.25, 
+            jump: -4.5 
+        };
+
+        // Kırmızı Konteynerler (Sütun yerine)
+        const containers = [];
+
+        // Kontroller (Tıklama, Dokunma veya Tuşa basma)
+        function flap() {
+            if(gameState === 'play') {
+                ship.velocity = ship.jump;
+            } else if(gameState !== 'play') {
+                resetGame();
+            }
+        }
+        document.addEventListener("keydown", flap);
+        document.addEventListener("touchstart", flap);
+        document.addEventListener("mousedown", flap);
+
+        function resetGame() {
+            ship.y = 150; 
+            ship.velocity = 0; 
+            containers.length = 0; 
+            score = 0; 
+            frames = 0; 
+            gameState = 'play';
+        }
+
+        function drawShip() {
+            // İleride buraya kendi çizdiğimiz pixel gemiyi ekleyebilirsin
+            ctx.fillStyle = "#1E3F66"; // Gemi rengi
+            ctx.fillRect(ship.x, ship.y, ship.w, ship.h);
+            ctx.fillStyle = "#A52A2A"; // Geminin üstündeki küçük yük
+            ctx.fillRect(ship.x + 10, ship.y - 10, 25, 10);
+        }
+
+        function updateShip() {
+            ship.velocity += ship.gravity;
+            ship.y += ship.velocity;
+            
+            // Yere veya tavana çarpma
+            if(ship.y + ship.h >= canvas.height || ship.y <= 0) {
+                gameState = 'over';
+            }
+        }
+
+        function handleContainers() {
+            // Yeni konteyner sütunları oluştur (Zorluk ayarı buradan yapılır)
+            if(frames % 110 === 0) {
+                let topHeight = Math.random() * (canvas.height / 2) + 30;
+                let gap = 120; // Sütunlar arası boşluk
+                
+                // Üst Konteyner
+                containers.push({ x: canvas.width, y: 0, w: 50, h: topHeight, passed: false }); 
+                // Alt Konteyner
+                containers.push({ x: canvas.width, y: topHeight + gap, w: 50, h: canvas.height - topHeight - gap }); 
+            }
+
+            for(let i = 0; i < containers.length; i++) {
+                let c = containers[i];
+                c.x -= 2; // Sola kayma hızı
+
+                // Konteyner Çizimi (Kırmızı)
+                ctx.fillStyle = "#C23B22"; 
+                ctx.fillRect(c.x, c.y, c.w, c.h);
+                ctx.strokeStyle = "#000";
+                ctx.strokeRect(c.x, c.y, c.w, c.h);
+
+                // Çarpışma Testi
+                if(ship.x < c.x + c.w && ship.x + ship.w > c.x && ship.y < c.y + c.h && ship.y + ship.h > c.y) {
+                    gameState = 'over';
+                }
+
+                // Skor Ekleme (Geminin konteyneri geçtiği an)
+                if(i % 2 === 0 && c.x + c.w < ship.x && !c.passed) {
+                    score++;
+                    c.passed = true;
+                }
+            }
+
+            // Ekrandan çıkan konteynerleri sil
+            while(containers.length > 0 && containers[0].x < -50) {
+                containers.shift();
+            }
+        }
+
+        function drawScore() {
+            ctx.fillStyle = "#FFF";
+            ctx.font = "bold 35px Arial";
+            ctx.fillText(score, canvas.width / 2 - 10, 50);
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.strokeText(score, canvas.width / 2 - 10, 50);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if(gameState === 'play') {
+                updateShip();
+                handleContainers();
+                drawShip();
+                drawScore();
+                frames++;
+            } else if(gameState === 'start') {
+                ctx.fillStyle = "#000"; 
+                ctx.font = "bold 20px Arial"; 
+                ctx.fillText("Flappy Liman", 95, canvas.height / 2 - 40);
+                ctx.font = "16px Arial"; 
+                ctx.fillText("Başlamak için ekrana tıkla!", 60, canvas.height / 2);
+            } else {
+                ctx.fillStyle = "#000"; 
+                ctx.font = "bold 24px Arial"; 
+                ctx.fillText("Oyun Bitti!", 100, canvas.height / 2 - 20);
+                ctx.fillText("Skor: " + score, 115, canvas.height / 2 + 10);
+                ctx.font = "16px Arial"; 
+                ctx.fillText("Tekrar oynamak için tıkla", 75, canvas.height / 2 + 50);
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
